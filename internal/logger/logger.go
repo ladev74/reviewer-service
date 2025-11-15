@@ -11,7 +11,7 @@ import (
 )
 
 type Config struct {
-	Env string `env:"LOGGER"`
+	Env string `env:"LOGGER" env-required:"true"`
 }
 
 func New(cfg *Config) (*zap.Logger, error) {

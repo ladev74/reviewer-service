@@ -7,11 +7,14 @@ import (
 	"github.com/ilyakaznacheev/cleanenv"
 
 	"reviewer-service/internal/logger"
+	"reviewer-service/internal/repository/postgres"
+	"reviewer-service/internal/server"
 )
 
 type Config struct {
-	//Env string `yaml:"env" env-required:"true"`
-	Logger logger.Config
+	HTTP     server.Config
+	Postgres postgres.Config
+	Logger   logger.Config
 }
 
 func New(path string) (*Config, error) {

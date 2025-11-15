@@ -1,0 +1,21 @@
+networks:
+  reviewer-service-net:
+    driver: bridge
+
+#volumes:
+
+services:
+  postgres:
+    image: postgres:17.5
+    container_name: postgres
+    env_file:
+      - config/local.env
+    ports:
+      - "5432:5432"
+    healthcheck:
+      test: [ "CMD-SHELL", "pg_isready -U root" ]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    networks:
+      - reviewer-service-net
