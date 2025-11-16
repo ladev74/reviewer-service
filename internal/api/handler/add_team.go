@@ -24,7 +24,7 @@ func AddTeam(repo repository.Repository, requestTimeout time.Duration, logger *z
 		err := json.NewDecoder(r.Body).Decode(&team)
 		if err != nil {
 			logger.Warn("AddTeam: failed to decode body", zap.Error(err))
-			WriteError(w, logger, "failed to decode body", http.StatusBadRequest)
+			writeError(w, logger, "failed to decode body", http.StatusBadRequest)
 			return
 		}
 
@@ -52,7 +52,7 @@ func AddTeam(repo repository.Repository, requestTimeout time.Duration, logger *z
 			}
 
 			logger.Error("AddTeam: failed to save team", zap.Error(err))
-			WriteError(w, logger, "failed to save team", http.StatusInternalServerError)
+			writeError(w, logger, "failed to save team", http.StatusInternalServerError)
 			return
 		}
 

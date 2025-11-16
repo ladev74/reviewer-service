@@ -29,6 +29,7 @@ func NewRouter(repo repository.Repository, log *zap.Logger, cfgLogger *logger.Co
 
 	router.Post("/team/add", handler.AddTeam(repo, srvTimeout, log))
 	router.Get("/team/get", handler.GetTeam(repo, srvTimeout, log))
+	router.Post("/users/setIsActive", handler.SetIsActive(repo, srvTimeout, log))
 
 	return router
 }

@@ -2,8 +2,10 @@ package postgres
 
 import (
 	"context"
+	"errors"
 	"fmt"
 
+	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/pgxpool"
 	"go.uber.org/zap"
 
@@ -133,6 +135,27 @@ func (c *Client) GetTeam(ctx context.Context, teamName string) (*domain.Team, er
 		TeamName: teamName,
 		Members:  members,
 	}, nil
+}
+
+func (c *Client) SetIsActive(ctx context.Context, userID string, isActive bool) (*domain.User, error) {
+	ctx, cancel := context.WithTimeout(ctx, c.timeout)
+	defer cancel()
+
+	var user domain.User
+	err := c.pool.QueryRow(ctx, querySetIsActive, userID, isActive).
+		Scan(&user.UserID, &user.UserName, &user.TeamName, &user.IsActive)
+	if err != nil {
+		if errors.Is(err, pgx.ErrNoRows) {
+			c.logger.Warn(repository.ErrUserNotFound.Error(), zap.String("user_id", userID))
+			return nil, repository.ErrUserNotFound
+		}
+
+		c.logger.Error("failed to set is_active", zap.String("user_id", userID))
+		return nil, fmt.Errorf("failed to set is_active: %w", err)
+	}
+
+	c.logger.Info("successfully set is_active", zap.String("user_id", userID))
+	return &user, nil
 }
 
 func (c *Client) Close() {

@@ -4,6 +4,7 @@ import (
 	"context"
 	"encoding/json"
 	"errors"
+	"fmt"
 	"net/http"
 	"time"
 
@@ -21,7 +22,7 @@ func GetTeam(repo repository.Repository, requestTimeout time.Duration, logger *z
 		teamName := r.URL.Query().Get("team_name")
 		if teamName == "" {
 			logger.Warn("GetTeam: team_name is required")
-			WriteError(w, logger, "team_name is required", http.StatusBadRequest)
+			writeError(w, logger, "team_name is required", http.StatusBadRequest)
 			return
 		}
 
@@ -29,11 +30,12 @@ func GetTeam(repo repository.Repository, requestTimeout time.Duration, logger *z
 		if err != nil {
 			if errors.Is(err, repository.ErrTeamNotFound) {
 				logger.Warn("GetTeam: team not found", zap.String("team_name", teamName), zap.Error(err))
-				api.WriteApiError(w, logger, api.ErrNotFound, api.CodeNotFound, http.StatusNotFound)
+				msg := fmt.Sprintf("%s %s", teamName, api.ErrNotFound)
+				api.WriteApiError(w, logger, msg, api.CodeNotFound, http.StatusNotFound)
 				return
 			}
 			logger.Error("GetTeam: get team failed", zap.Error(err))
-			WriteError(w, logger, "get team failed", http.StatusInternalServerError)
+			writeError(w, logger, "get team failed", http.StatusInternalServerError)
 			return
 		}
 

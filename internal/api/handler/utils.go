@@ -12,7 +12,7 @@ type ErrorResponse struct {
 	Message string `json:"message"`
 }
 
-func WriteError(w http.ResponseWriter, logger *zap.Logger, errMessage string, statusCode int) {
+func writeError(w http.ResponseWriter, logger *zap.Logger, errMessage string, statusCode int) {
 	w.Header().Set("Content-Type", "application/json")
 	w.WriteHeader(statusCode)
 
