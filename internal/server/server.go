@@ -28,6 +28,7 @@ func NewRouter(repo repository.Repository, log *zap.Logger, cfgLogger *logger.Co
 	router.Use(middleware.URLFormat)
 
 	router.Post("/team/add", handler.AddTeam(repo, srvTimeout, log))
+	router.Get("/team/get", handler.GetTeam(repo, srvTimeout, log))
 
 	return router
 }

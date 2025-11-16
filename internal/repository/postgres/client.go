@@ -2,20 +2,14 @@ package postgres
 
 import (
 	"context"
-	"errors"
 	"fmt"
-	"math"
-	"math/rand"
-	"time"
 
-	"github.com/jackc/pgx/v5/pgconn"
 	"github.com/jackc/pgx/v5/pgxpool"
 	"go.uber.org/zap"
 
-	"reviewer-service/internal/api"
+	"reviewer-service/internal/domain"
+	"reviewer-service/internal/repository"
 )
-
-var ErrTeamAlreadyExists = errors.New("team already exists")
 
 func New(ctx context.Context, config *Config, logger *zap.Logger) (*Client, error) {
 	ctx, cancel := context.WithTimeout(ctx, config.Timeout)
@@ -23,16 +17,7 @@ func New(ctx context.Context, config *Config, logger *zap.Logger) (*Client, erro
 
 	dsn := buildDSN(config)
 
-	retryCfg := retryConfig{
-		maxRetries:  config.MaxRetries,
-		baseBackoff: config.BaseBackoff,
-	}
-
-	pool, err := withRetry(ctx, retryCfg, logger, func() (*pgxpool.Pool, error) {
-		pool, err := pgxpool.New(ctx, dsn)
-		return pool, err
-
-	})
+	pool, err := pgxpool.New(ctx, dsn)
 	if err != nil {
 		return nil, fmt.Errorf("failed to connect to postgres: %w", err)
 	}
@@ -43,14 +28,13 @@ func New(ctx context.Context, config *Config, logger *zap.Logger) (*Client, erro
 	}
 
 	return &Client{
-		pool:        pool,
-		logger:      logger,
-		timeout:     config.Timeout,
-		retryConfig: retryCfg,
+		pool:    pool,
+		logger:  logger,
+		timeout: config.Timeout,
 	}, nil
 }
 
-func (c *Client) SaveTeam(ctx context.Context, team *api.Team) error {
+func (c *Client) SaveTeam(ctx context.Context, team *domain.Team) error {
 	ctx, cancel := context.WithTimeout(ctx, c.timeout)
 	defer cancel()
 
@@ -60,8 +44,8 @@ func (c *Client) SaveTeam(ctx context.Context, team *api.Team) error {
 	}
 
 	if exists {
-		c.logger.Warn(ErrTeamAlreadyExists.Error(), zap.Any("team_name", team.TeamName))
-		return fmt.Errorf("%w: %s", ErrTeamAlreadyExists, team.TeamName)
+		c.logger.Warn(repository.ErrTeamAlreadyExists.Error(), zap.Any("team_name", team.TeamName))
+		return fmt.Errorf("%w: %s", repository.ErrTeamAlreadyExists, team.TeamName)
 	}
 
 	tx, err := c.pool.Begin(ctx)
@@ -71,10 +55,7 @@ func (c *Client) SaveTeam(ctx context.Context, team *api.Team) error {
 	}
 	defer tx.Rollback(ctx)
 
-	tag, err := withRetry(ctx, c.retryConfig, c.logger, func() (pgconn.CommandTag, error) {
-		tag, err := tx.Exec(ctx, querySetTeamName, team.TeamName)
-		return tag, err
-	})
+	tag, err := tx.Exec(ctx, querySetTeamName, team.TeamName)
 	if err != nil {
 		c.logger.Error("failed to set team name", zap.Error(err), zap.String("team_name", team.TeamName))
 		return fmt.Errorf("failed to set team name: %s: %w", team.TeamName, err)
@@ -86,10 +67,7 @@ func (c *Client) SaveTeam(ctx context.Context, team *api.Team) error {
 	}
 
 	for _, member := range team.Members {
-		tag, err = withRetry(ctx, c.retryConfig, c.logger, func() (pgconn.CommandTag, error) {
-			tag, err = tx.Exec(ctx, querySaveTeamMember, member.UserID, member.UserName, team.TeamName, member.IsActive)
-			return tag, err
-		})
+		tag, err = tx.Exec(ctx, querySaveTeamMember, member.UserID, member.UserName, team.TeamName, member.IsActive)
 		if err != nil {
 			c.logger.Error("failed to save team member", zap.Error(err), zap.String("user_id", member.UserID))
 			return fmt.Errorf("failed to save team member: %s: %w", member.UserID, err)
@@ -111,72 +89,66 @@ func (c *Client) SaveTeam(ctx context.Context, team *api.Team) error {
 	return nil
 }
 
+func (c *Client) GetTeam(ctx context.Context, teamName string) (*domain.Team, error) {
+	ctx, cancel := context.WithTimeout(ctx, c.timeout)
+	defer cancel()
+
+	exists, err := c.teamExists(ctx, teamName)
+	if err != nil {
+		return nil, err
+	}
+
+	if !exists {
+		c.logger.Warn(repository.ErrTeamNotFound.Error(), zap.String("team_name", teamName))
+		return nil, repository.ErrTeamNotFound
+	}
+
+	rows, err := c.pool.Query(ctx, queryGetTeam, teamName)
+	if err != nil {
+		c.logger.Error("failed to get team member", zap.String("team_name", teamName), zap.Error(err))
+		return nil, fmt.Errorf("failed to get team member: %w", err)
+	}
+	defer rows.Close()
+
+	members := make([]domain.TeamMember, 0)
+	for rows.Next() {
+		var member domain.TeamMember
+
+		err = rows.Scan(&member.UserID, &member.UserName, &member.IsActive)
+		if err != nil {
+			c.logger.Error("failed to scan member", zap.String("team_name", teamName), zap.Error(err))
+			return nil, fmt.Errorf("failed to scan member: %w", err)
+		}
+
+		members = append(members, member)
+	}
+	err = rows.Err()
+	if err != nil {
+		c.logger.Error("rows error", zap.String("team_name", teamName), zap.Error(err))
+		return nil, fmt.Errorf("rows error: %w", err)
+	}
+
+	c.logger.Info("successfully retrieved team members", zap.String("team_name", teamName))
+	return &domain.Team{
+		TeamName: teamName,
+		Members:  members,
+	}, nil
+}
+
 func (c *Client) Close() {
 	c.pool.Close()
 }
 
 func (c *Client) teamExists(ctx context.Context, teamName string) (bool, error) {
-	ctx, cancel := context.WithTimeout(ctx, c.timeout)
-	defer cancel()
-
 	var exists bool
 
-	_, err := withRetry(ctx, c.retryConfig, c.logger, func() (struct{}, error) {
-		err := c.pool.QueryRow(ctx, queryTeamExists, teamName).Scan(&exists)
-		return struct{}{}, err
-	})
+	err := c.pool.QueryRow(ctx, queryTeamExists, teamName).Scan(&exists)
 	if err != nil {
 		c.logger.Error("failed to check if team exists", zap.Error(err))
 		return false, fmt.Errorf("failed to check if team exists: %w", err)
 	}
 
 	return exists, nil
-}
-
-func withRetry[T any](ctx context.Context, retryConfig retryConfig, logger *zap.Logger, fn func() (T, error)) (T, error) {
-	var zero T
-	var lastErr error
-
-	for i := 0; i < retryConfig.maxRetries; i++ {
-		res, err := fn()
-		if err == nil {
-			return res, nil
-		}
-
-		var pgErr *pgconn.PgError
-		if errors.As(err, &pgErr) {
-			if pgErr.Code == "42P01" {
-				logger.Error("withRetry: non-retryable Postgres error", zap.Error(err))
-				return zero, err
-			}
-		}
-
-		lastErr = err
-
-		if i == retryConfig.maxRetries-1 {
-			break
-		}
-
-		backoff := retryConfig.baseBackoff * time.Duration(math.Pow(2, float64(i)))
-		jitter := time.Duration(rand.Float64() * float64(retryConfig.baseBackoff))
-		pause := backoff + jitter
-
-		select {
-		case <-time.After(pause):
-		case <-ctx.Done():
-			logger.Error(
-				"withRetry: context canceled",
-				zap.Int("attempts", i+1),
-				zap.Duration("backoff", retryConfig.baseBackoff),
-			)
-
-			return zero, ctx.Err()
-		}
-
-		logger.Warn("withRetry: retrying", zap.Int("attempt", i+1), zap.Duration("backoff", pause))
-	}
-
-	return zero, fmt.Errorf("withRetry: all retries failed, lastErr: %w", lastErr)
 }
 
 func buildDSN(config *Config) string {

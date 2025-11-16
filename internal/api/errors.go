@@ -17,12 +17,12 @@ const (
 )
 
 const (
-	ErrTeamExists  = "team_name already exists"
+	ErrTeamExists  = "already exists"
 	ErrPRExists    = ""
 	ErrPRMerged    = ""
 	ErrNotAssigned = ""
 	ErrNoCandidate = ""
-	ErrNotFound    = ""
+	ErrNotFound    = "not found"
 )
 
 type Error struct {

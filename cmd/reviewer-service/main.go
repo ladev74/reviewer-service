@@ -20,10 +20,7 @@ import (
 
 // TODO: добавить в описание, то что за основу взято, что один юзер может быть только в одной команде
 // TODO: drop schema
-// TODO: set a timeout in handlers
-// TODO: errors from openapi
 // TODO: update team in add_team
-// TODO: ретраить только сетевые ошибки
 
 func main() {
 	ctx, cancel := signal.NotifyContext(
@@ -61,7 +58,6 @@ func main() {
 		Addr:    addr,
 		Handler: router,
 	}
-	fmt.Println(cfg)
 
 	go func() {
 		log.Info("starting http server", zap.String("addr", srv.Addr))
