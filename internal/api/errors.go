@@ -18,26 +18,27 @@ const (
 
 const (
 	ErrTeamExists  = "already exists"
-	ErrPRExists    = ""
+	ErrPRExists    = "PR id already exists"
 	ErrPRMerged    = ""
 	ErrNotAssigned = ""
 	ErrNoCandidate = ""
 	ErrNotFound    = "not found"
 )
 
-type Error struct {
-	Code    string
-	Message string
+type apiError struct {
+	Error struct {
+		Code    string `json:"code"`
+		Message string `json:"message"`
+	} `json:"error"`
 }
 
 func WriteApiError(w http.ResponseWriter, logger *zap.Logger, message string, code string, statusCode int) {
 	w.Header().Set("Content-Type", "application/json")
 	w.WriteHeader(statusCode)
 
-	e := Error{
-		Code:    code,
-		Message: message,
-	}
+	e := apiError{}
+	e.Error.Code = code
+	e.Error.Message = message
 
 	err := json.NewEncoder(w).Encode(e)
 	if err != nil {

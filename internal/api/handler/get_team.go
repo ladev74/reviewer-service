@@ -39,8 +39,22 @@ func GetTeam(repo repository.Repository, requestTimeout time.Duration, logger *z
 			return
 		}
 
+		members := make([]api.TeamMember, len(team.Members))
+		for i, m := range team.Members {
+			members[i] = api.TeamMember{
+				UserID:   m.UserID,
+				UserName: m.UserName,
+				IsActive: m.IsActive,
+			}
+		}
+
+		apiTeam := api.Team{
+			TeamName: team.TeamName,
+			Members:  members,
+		}
+
 		w.WriteHeader(http.StatusOK)
-		err = json.NewEncoder(w).Encode(team)
+		err = json.NewEncoder(w).Encode(apiTeam)
 		if err != nil {
 			logger.Error("GetTeam: failed to encode response", zap.Error(err))
 		}

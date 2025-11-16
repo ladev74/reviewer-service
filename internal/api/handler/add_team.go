@@ -56,8 +56,10 @@ func AddTeam(repo repository.Repository, requestTimeout time.Duration, logger *z
 			return
 		}
 
+		resp := map[string]api.Team{"team": team}
+		w.Header().Set("Content-Type", "application/json")
 		w.WriteHeader(http.StatusCreated)
-		err = json.NewEncoder(w).Encode(team)
+		err = json.NewEncoder(w).Encode(resp)
 		if err != nil {
 			logger.Error("AddTeam: failed to encode response", zap.Error(err))
 		}
