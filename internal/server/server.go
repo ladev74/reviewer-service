@@ -13,9 +13,10 @@ import (
 )
 
 type Config struct {
-	Host    string        `env:"HTTP_HOST" env-required:"true"`
-	Port    int           `env:"HTTP_PORT" env-required:"true"`
-	Timeout time.Duration `env:"HTTP_TIMEOUT" env-required:"true"`
+	Host            string        `env:"HTTP_HOST" env-required:"true"`
+	Port            int           `env:"HTTP_PORT" env-required:"true"`
+	Timeout         time.Duration `env:"HTTP_TIMEOUT" env-required:"true"`
+	ShutdownTimeout time.Duration `env:"HTTP_SHUTDOWN_TIMEOUT" env-required:"true"`
 }
 
 func NewRouter(repo repository.Repository, log *zap.Logger, cfgLogger *logger.Config, srvTimeout time.Duration) *chi.Mux {

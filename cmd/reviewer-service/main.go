@@ -65,7 +65,16 @@ func main() {
 	}()
 
 	<-ctx.Done()
+	shutdownCtx, shutdownCancel := context.WithTimeout(context.Background(), cfg.HTTP.ShutdownTimeout)
+	defer shutdownCancel()
+
 	log.Info("received shutdown signal")
+
+	pgClient.Close()
+	err = srv.Shutdown(shutdownCtx)
+	if err != nil {
+		log.Error("failed to shutdown server", zap.Error(err))
+	}
 
 	log.Info("application shutdown completed successfully")
 }
