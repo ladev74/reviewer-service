@@ -29,5 +29,6 @@ type Repository interface {
 	SavePR(ctx context.Context, pr domain.PullRequest) (*domain.PullRequest, error)
 	SetPRStatus(ctx context.Context, prID string, status string, mergedAt time.Time) (*domain.PullRequest, error)
 	ReassignReviewer(ctx context.Context, oldUserID string, prID string) (*domain.PullRequest, error)
+	GetReviewers(ctx context.Context, userID string) ([]domain.PullRequestShort, error)
 	Close()
 }

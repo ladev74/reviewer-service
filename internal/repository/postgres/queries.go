@@ -29,6 +29,11 @@ const (
 			from reviewer_service.pull_requests
 			where pull_request_id = $1`
 
+	queryGetReviewers = `select pull_request_id, pull_request_name, author_id, status
+			from reviewer_service.pull_requests
+			where $1 = any(assigned_reviewers)
+			order by created_at desc`
+
 	queryGetTeamName = `select team_name from reviewer_service.users where user_id = $1`
 
 	queryGetActiveReviewers = `select user_id from reviewer_service.users

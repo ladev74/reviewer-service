@@ -344,6 +344,43 @@ func (c *Client) ReassignReviewer(ctx context.Context, oldUserID string, prID st
 	return &pr, nil
 }
 
+func (c *Client) GetReviewers(ctx context.Context, userID string) ([]domain.PullRequestShort, error) {
+	ctx, cancel := context.WithTimeout(ctx, c.timeout)
+	defer cancel()
+
+	rows, err := c.pool.Query(ctx, queryGetReviewers, userID)
+	if err != nil {
+		c.logger.Error("failed to get reviewers", zap.String("user_id", userID), zap.Error(err))
+		return nil, fmt.Errorf("failed to get reviewers: %w", err)
+	}
+	defer rows.Close()
+
+	prs := make([]domain.PullRequestShort, 0)
+	for rows.Next() {
+		var pr domain.PullRequestShort
+		err = rows.Scan(
+			&pr.PullRequestId,
+			&pr.PullRequestName,
+			&pr.AuthorId,
+			&pr.Status,
+		)
+		if err != nil {
+			c.logger.Error("failed to scan pull request", zap.String("user_id", userID), zap.Error(err))
+			return nil, fmt.Errorf("failed to scan pull request: %w", err)
+		}
+
+		prs = append(prs, pr)
+	}
+
+	err = rows.Err()
+	if err != nil {
+		return nil, fmt.Errorf("rows error: %w", err)
+	}
+
+	c.logger.Info("successfully got reviewers", zap.Int("prs", len(prs)))
+	return prs, nil
+}
+
 func (c *Client) Close() {
 	c.pool.Close()
 }

@@ -34,3 +34,10 @@ type PullRequest struct {
 	CreatedAt         *time.Time `json:"created_at,omitempty"`
 	MergedAt          *time.Time `json:"merged_at,omitempty"`
 }
+
+type PullRequestShort struct {
+	PullRequestId   string `json:"pull_request_id"`
+	PullRequestName string `json:"pull_request_name"`
+	AuthorId        string `json:"author_id"`
+	Status          string `json:"status"`
+}

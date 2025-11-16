@@ -19,8 +19,6 @@ import (
 )
 
 // TODO: добавить в описание, то что за основу взято, что один юзер может быть только в одной команде
-// TODO: drop schema
-// TODO: update team in add_team
 
 func main() {
 	ctx, cancel := signal.NotifyContext(

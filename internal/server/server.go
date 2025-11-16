@@ -33,6 +33,7 @@ func NewRouter(repo repository.Repository, log *zap.Logger, cfgLogger *logger.Co
 	router.Post("/pullRequest/create", handler.CreatePR(repo, srvTimeout, log))
 	router.Post("/pullRequest/merge", handler.MergePR(repo, srvTimeout, log))
 	router.Post("/pullRequest/reassign", handler.ReassignPR(repo, srvTimeout, log))
+	router.Get("/users/getReview", handler.GetReview(repo, srvTimeout, log))
 
 	return router
 }

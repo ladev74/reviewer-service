@@ -34,3 +34,10 @@ type PullRequest struct {
 	CreatedAt         *time.Time
 	MergedAt          *time.Time
 }
+
+type PullRequestShort struct {
+	PullRequestId   string
+	PullRequestName string
+	AuthorId        string
+	Status          string
+}
