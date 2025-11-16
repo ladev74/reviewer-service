@@ -18,8 +18,6 @@ import (
 	"reviewer-service/internal/server"
 )
 
-// TODO: добавить в описание, то что за основу взято, что один юзер может быть только в одной команде
-
 func main() {
 	ctx, cancel := signal.NotifyContext(
 		context.Background(),
