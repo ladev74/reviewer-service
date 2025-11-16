@@ -7,6 +7,7 @@ import (
 	"time"
 
 	"github.com/jackc/pgx/v5"
+	"github.com/jackc/pgx/v5/pgtype"
 	"github.com/jackc/pgx/v5/pgxpool"
 	"go.uber.org/zap"
 
@@ -238,6 +239,108 @@ func (c *Client) SetPRStatus(ctx context.Context, prID string, status string, me
 	}
 
 	c.logger.Info("successfully set status", zap.String("pull_request_id", prID))
+	return &pr, nil
+}
+
+func (c *Client) ReassignReviewer(ctx context.Context, oldUserID string, prID string) (*domain.PullRequest, error) {
+	ctx, cancel := context.WithTimeout(ctx, c.timeout)
+	defer cancel()
+
+	var pr domain.PullRequest
+	pr.PullRequestId = prID
+
+	var reviewers pgtype.Array[string]
+	err := c.pool.QueryRow(ctx, queryGetPR, prID).Scan(
+		&pr.PullRequestName,
+		&pr.AuthorId,
+		&pr.Status,
+		&reviewers,
+		&pr.CreatedAt,
+		&pr.MergedAt,
+	)
+	fmt.Println(pr)
+	if err != nil {
+		if errors.Is(err, pgx.ErrNoRows) {
+			c.logger.Warn(repository.ErrPRNotFound.Error(), zap.String("pull_request_id", prID))
+			return nil, repository.ErrPRNotFound
+		}
+
+		c.logger.Error("failed to get pull request", zap.String("pull_request_id", prID), zap.Error(err))
+		return nil, fmt.Errorf("failed to get pull request: %s: %w", prID, err)
+	}
+
+	pr.AssignedReviewers = reviewers.Elements
+
+	if pr.Status == domain.PRStatusMerged {
+		c.logger.Warn(repository.ErrPRMerged.Error(), zap.String("pull_request_id", prID))
+		return nil, repository.ErrPRMerged
+	}
+
+	var found bool
+	for _, r := range pr.AssignedReviewers {
+		if r == oldUserID {
+			found = true
+			break
+		}
+	}
+
+	if !found {
+		c.logger.Warn(repository.ErrReviewerNotAssigned.Error(), zap.String("pull_request_id", prID))
+		return nil, repository.ErrReviewerNotAssigned
+	}
+
+	teamName, err := c.getTeamName(ctx, pr.AuthorId)
+	if err != nil {
+		c.logger.Error("failed to get team name", zap.String("user_id", pr.AuthorId), zap.Error(err))
+		return nil, fmt.Errorf("failed to get team name: %s: %w", pr.AuthorId, err)
+	}
+
+	activeReviewers, err := c.getActiveReviewers(ctx, teamName, pr.AuthorId)
+	if err != nil {
+		return nil, err
+	}
+
+	var newReviewer string
+	for _, candidate := range activeReviewers {
+		if candidate == oldUserID {
+			continue
+		}
+		alreadyAssigned := false
+		for _, assigned := range pr.AssignedReviewers {
+			if assigned == candidate {
+				alreadyAssigned = true
+				break
+			}
+		}
+		if !alreadyAssigned {
+			newReviewer = candidate
+			break
+		}
+	}
+
+	if newReviewer == "" {
+		c.logger.Warn(repository.ErrNoCandidate.Error())
+		return nil, repository.ErrNoCandidate
+	}
+
+	for i, uid := range pr.AssignedReviewers {
+		if uid == oldUserID {
+			pr.AssignedReviewers[i] = newReviewer
+			break
+		}
+	}
+
+	tag, err := c.pool.Exec(ctx, queryUpdateAssignedReviewers, pr.AssignedReviewers, pr.PullRequestId)
+	if err != nil {
+		return nil, fmt.Errorf("failed to update assigned reviewers: %w", err)
+	}
+
+	if tag.RowsAffected() == 0 {
+		c.logger.Error("failed to update assigned reviewers", zap.String("pull_request_id", pr.PullRequestId))
+		return nil, fmt.Errorf("failed to update assigned reviewers: %s: %w", pr.PullRequestId, err)
+	}
+
+	c.logger.Info("successfully updated assigned reviewers", zap.String("pull_request_id", pr.PullRequestId))
 	return &pr, nil
 }
 

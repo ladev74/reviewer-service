@@ -12,6 +12,10 @@ var (
 	ErrTeamAlreadyExists = errors.New("team already exists")
 	ErrPRAlreadyExists   = errors.New("pull request already exists")
 
+	ErrPRMerged            = errors.New("pull request already merged")
+	ErrReviewerNotAssigned = errors.New("reviewer not assigned")
+	ErrNoCandidate         = errors.New("no candidate")
+
 	ErrTeamNotFound      = errors.New("team not found")
 	ErrUserNotFound      = errors.New("user not found")
 	ErrReviewersNotFound = errors.New("reviewers not found")
@@ -24,5 +28,6 @@ type Repository interface {
 	SetIsActive(ctx context.Context, userID string, isActive bool) (*domain.User, error)
 	SavePR(ctx context.Context, pr domain.PullRequest) (*domain.PullRequest, error)
 	SetPRStatus(ctx context.Context, prID string, status string, mergedAt time.Time) (*domain.PullRequest, error)
+	ReassignReviewer(ctx context.Context, oldUserID string, prID string) (*domain.PullRequest, error)
 	Close()
 }

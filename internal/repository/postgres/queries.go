@@ -19,9 +19,15 @@ const (
 			set status = $2, merged_at = coalesce(merged_at, $3) where pull_request_id = $1
     		returning pull_request_id, pull_request_name, author_id, status, assigned_reviewers, created_at, merged_at`
 
+	queryUpdateAssignedReviewers = `update reviewer_service.pull_requests set assigned_reviewers = $1 where pull_request_id = $2`
+
 	queryTeamExists = `select exists (select 1 from reviewer_service.teams where team_name = $1)`
 
 	queryPRExists = `select exists (select 1 from reviewer_service.pull_requests where pull_request_id = $1)`
+
+	queryGetPR = `select pull_request_name, author_id, status, assigned_reviewers, created_at, merged_at
+			from reviewer_service.pull_requests
+			where pull_request_id = $1`
 
 	queryGetTeamName = `select team_name from reviewer_service.users where user_id = $1`
 

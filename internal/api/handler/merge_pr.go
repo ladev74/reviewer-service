@@ -35,13 +35,13 @@ func MergePR(repo repository.Repository, requestTimeout time.Duration, logger *z
 		pr, err := repo.SetPRStatus(ctx, req.PullRequestId, api.PRStatusMerged, tn)
 		if err != nil {
 			if errors.Is(err, repository.ErrPRNotFound) {
-				logger.Warn("MergePR: PR not found", zap.String("pull_request_id", req.PullRequestId), zap.Error(err))
+				logger.Warn("MergePR: pull request not found", zap.String("pull_request_id", req.PullRequestId), zap.Error(err))
 				api.WriteApiError(w, logger, api.ErrNotFound, api.CodeNotFound, http.StatusNotFound)
 				return
 			}
 
-			logger.Error("MergePR: failed to set PR status", zap.String("pull_request_id", req.PullRequestId), zap.Error(err))
-			writeError(w, logger, "failed to set PR status", http.StatusInternalServerError)
+			logger.Error("MergePR: failed to set pull request status", zap.String("pull_request_id", req.PullRequestId), zap.Error(err))
+			writeError(w, logger, "failed to set pull request status", http.StatusInternalServerError)
 			return
 		}
 

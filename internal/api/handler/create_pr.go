@@ -50,7 +50,7 @@ func CreatePR(repo repository.Repository, requestTimeout time.Duration, logger *
 		if err != nil {
 			switch {
 			case errors.Is(err, repository.ErrPRAlreadyExists):
-				logger.Warn("CreatePR: PR already exists", zap.Error(err))
+				logger.Warn("CreatePR: pull request already exists", zap.Error(err))
 				api.WriteApiError(w, logger, api.ErrPRExists, api.CodePRExists, http.StatusConflict)
 				return
 

@@ -19,9 +19,9 @@ const (
 const (
 	ErrTeamExists  = "already exists"
 	ErrPRExists    = "PR id already exists"
-	ErrPRMerged    = ""
-	ErrNotAssigned = ""
-	ErrNoCandidate = ""
+	ErrPRMerged    = "cannot reassign on merged PR"
+	ErrNotAssigned = "reviewer is not assigned to this PR"
+	ErrNoCandidate = "no active replacement candidate in team"
 	ErrNotFound    = "not found"
 )
 
