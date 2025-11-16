@@ -15,6 +15,10 @@ const (
     		(pull_request_id, pull_request_name, author_id, status, assigned_reviewers, created_at)
 			values ($1, $2, $3, $4, $5, $6)`
 
+	querySetPRStatus = `update reviewer_service.pull_requests
+			set status = $2, merged_at = coalesce(merged_at, $3) where pull_request_id = $1
+    		returning pull_request_id, pull_request_name, author_id, status, assigned_reviewers, created_at, merged_at`
+
 	queryTeamExists = `select exists (select 1 from reviewer_service.teams where team_name = $1)`
 
 	queryPRExists = `select exists (select 1 from reviewer_service.pull_requests where pull_request_id = $1)`

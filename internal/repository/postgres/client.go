@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"time"
 
 	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/pgxpool"
@@ -208,6 +209,35 @@ func (c *Client) SavePR(ctx context.Context, pr domain.PullRequest) (*domain.Pul
 	pr.AssignedReviewers = reviewers
 
 	c.logger.Info("successfully saved pull request", zap.String("pull_request_id", pr.PullRequestId))
+	return &pr, nil
+}
+
+func (c *Client) SetPRStatus(ctx context.Context, prID string, status string, mergedAt time.Time) (*domain.PullRequest, error) {
+	ctx, cancel := context.WithTimeout(ctx, c.timeout)
+	defer cancel()
+
+	var pr domain.PullRequest
+
+	err := c.pool.QueryRow(ctx, querySetPRStatus, prID, status, mergedAt).Scan(
+		&pr.PullRequestId,
+		&pr.PullRequestName,
+		&pr.AuthorId,
+		&pr.Status,
+		&pr.AssignedReviewers,
+		&pr.CreatedAt,
+		&pr.MergedAt,
+	)
+	if err != nil {
+		if errors.Is(err, pgx.ErrNoRows) {
+			c.logger.Warn(repository.ErrPRNotFound.Error(), zap.String("pull_request_id", prID))
+			return nil, repository.ErrPRNotFound
+		}
+
+		c.logger.Error("failed to set status", zap.String("pull_request_id", prID), zap.Error(err))
+		return nil, fmt.Errorf("failed to set status: %w", err)
+	}
+
+	c.logger.Info("successfully set status", zap.String("pull_request_id", prID))
 	return &pr, nil
 }
 
