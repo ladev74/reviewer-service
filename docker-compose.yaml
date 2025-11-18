@@ -1,5 +1,3 @@
-version: "3.9"
-
 networks:
   reviewer-service-net:
     driver: bridge

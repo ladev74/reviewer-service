@@ -14,7 +14,7 @@ docker compose up
 ```text
 За основу взято то, что user может быть только в дной команде
 P.S. мне пришло письмо в котором было указано что проект должен запускаться только командой docker compose up,
-поэтому в docker compose мне пришлось захордкодить порты и postgres user и немого переписать сам docker-compose.yaml
+поэтому в docker compose мне пришлось захордкодить порты, postgres user и немого переписать сам docker-compose.yaml
 
 ```
 
