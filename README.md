@@ -5,7 +5,7 @@
 ## Запуск
 ```text
 Приложение запускается командой 
-docker compose --env-file config/prod.env up --build -d 
+docker compose up 
 ```
 
 ---
@@ -13,5 +13,8 @@ docker compose --env-file config/prod.env up --build -d
 ## Примечание
 ```text
 За основу взято то, что user может быть только в дной команде
+P.S. мне пришло письмо в котором было указано что проект должен запускаться только командой docker compose up,
+поэтому в docker compose мне пришлось захордкодить порты и postgres user и немого переписать сам docker-compose.yaml
+
 ```
 

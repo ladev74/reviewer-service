@@ -44,10 +44,16 @@ func AddTeam(repo repository.Repository, requestTimeout time.Duration, logger *z
 
 		err = repo.SaveTeam(ctx, dTeam)
 		if err != nil {
-			if errors.Is(err, repository.ErrTeamAlreadyExists) {
+			switch {
+			case errors.Is(err, repository.ErrTeamAlreadyExists):
 				logger.Warn("AddTeam: team already exists", zap.Error(err))
 				msg := fmt.Sprintf("%s %s", team.TeamName, api.ErrTeamExists)
 				api.WriteApiError(w, logger, msg, api.CodeTeamExists, http.StatusBadRequest)
+				return
+
+			case errors.Is(err, repository.ErrDuplicateKey):
+				logger.Warn("AddTeam: duplicate key", zap.Error(err))
+				writeError(w, logger, "duplicate key", http.StatusBadRequest)
 				return
 			}
 

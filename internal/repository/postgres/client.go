@@ -7,6 +7,7 @@ import (
 	"time"
 
 	"github.com/jackc/pgx/v5"
+	"github.com/jackc/pgx/v5/pgconn"
 	"github.com/jackc/pgx/v5/pgtype"
 	"github.com/jackc/pgx/v5/pgxpool"
 	"go.uber.org/zap"
@@ -73,6 +74,12 @@ func (c *Client) SaveTeam(ctx context.Context, team *domain.Team) error {
 	for _, member := range team.Members {
 		tag, err = tx.Exec(ctx, querySaveTeamMember, member.UserID, member.UserName, team.TeamName, member.IsActive)
 		if err != nil {
+			var pgErr *pgconn.PgError
+			if errors.As(err, &pgErr) && pgErr.Code == "23505" {
+				c.logger.Error("failed to save team member: duplicate key", zap.String("user_id", member.UserID))
+				return repository.ErrDuplicateKey
+			}
+
 			c.logger.Error("failed to save team member", zap.Error(err), zap.String("user_id", member.UserID))
 			return fmt.Errorf("failed to save team member: %s: %w", member.UserID, err)
 		}
