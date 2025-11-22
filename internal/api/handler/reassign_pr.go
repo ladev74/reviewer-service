@@ -31,7 +31,7 @@ func ReassignPR(repo repository.Repository, requestTimeout time.Duration, logger
 			return
 		}
 
-		pr, err := repo.ReassignReviewer(ctx, req.PullRequestId, req.OldUserId)
+		pr, err := repo.ReassignReviewer(ctx, req.OldUserId, req.PullRequestId)
 		if err != nil {
 			switch {
 			case errors.Is(err, repository.ErrPRNotFound):
@@ -81,21 +81,3 @@ func ReassignPR(repo repository.Repository, requestTimeout time.Duration, logger
 		logger.Info("ReassignPR: successfully created pull request", zap.String("pull_request_id", apiPR.PullRequestId))
 	}
 }
-
-//curl -X POST http://localhost:8080/team/add \
-//-H "Content-Type application/json" \
-//-d '{
-//"team_name": "backend",
-//"members": [
-//{
-//"user_id": "1",
-//"username": "Alice",
-//"is_active": true
-//},
-//{
-//"user_id": "1",
-//"username": "Bob",
-//"is_active": true
-//}
-//]
-//}'
